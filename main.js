@@ -22,11 +22,18 @@ const initCamera = () => {
 // Renderer initialization
 const initRenderer = () => {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
+  const maxWidth = 1920;
+  const maxHeight = 1080;
+  
+  const width = Math.min(window.innerWidth, maxWidth);
+  const height = Math.min(window.innerHeight, maxHeight);
+  
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(window.devicePixelRatio > 1 ? window.devicePixelRatio : 1);
   document.body.appendChild(renderer.domElement);
   return renderer;
 };
+
 
 // Composer initialization for postprocessing
 const initComposer = (renderer, scene, camera) => {
