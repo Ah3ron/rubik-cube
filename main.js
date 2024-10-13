@@ -16,16 +16,15 @@ const camera = new THREE.PerspectiveCamera(
 
 // Создание плоскости для фона
 const backgroundGeometry = new THREE.PlaneGeometry(50, 50);
-const backgroundMaterial = new THREE.MeshBasicMaterial({ color: 0x161616 }); // Цвет фона
+const backgroundMaterial = new THREE.MeshBasicMaterial({ color: 0x161616 });
 const backgroundMesh = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
-backgroundMesh.rotation.x = 0; // Повернуть плоскость, чтобы она была горизонтальной
-backgroundMesh.position.z = -5; // Позиция плоскости
+backgroundMesh.position.z = -5;
 scene.add(backgroundMesh);
 
 // Enable anti-aliasing
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); // Use high DPI displays
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 // Set up post-processing
@@ -34,9 +33,9 @@ const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass();
-bloomPass.strength = 0.33; // Bloom intensity
-bloomPass.radius = 0.3; // Bloom spread
-bloomPass.threshold = 0.1; // Bloom threshold
+bloomPass.strength = 0.33;
+bloomPass.radius = 0.3;
+bloomPass.threshold = 0.1;
 composer.addPass(bloomPass);
 
 function degreesToRads(degrees) {
@@ -46,49 +45,45 @@ function degreesToRads(degrees) {
 // Create a 3D Rubik's Cube
 const createCube = () => {
   const cubeSize = 1;
-  const spacing = 0.1; // Spacing between small cubes
+  const spacing = 0.1;
   const colors = {
-    front: 0xff0000, // Red
-    back: 0xff5000, // Orange
-    top: 0xffffff, // White
-    bottom: 0xffff00, // Yellow
-    left: 0x00ff00, // Green
-    right: 0x0000ff, // Blue
-    gray: 0x161616 // Gray for touching faces
+    front: 0xff0000,
+    back: 0xff5000,
+    top: 0xffffff,
+    bottom: 0xffff00,
+    left: 0x00ff00,
+    right: 0x0000ff,
+    gray: 0x161616
   };
   const cube = new THREE.Group();
 
-  // Create the small cubes for the Rubik's Cube
   for (let x = -1; x <= 1; x++) {
     for (let y = -1; y <= 1; y++) {
       for (let z = -1; z <= 1; z++) {
         const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
         const materials = [
-          new THREE.MeshBasicMaterial({ color: (x !== 1) ? colors.gray : colors.front }), // Front
-          new THREE.MeshBasicMaterial({ color: (x !== -1) ? colors.gray : colors.back }), // Back
-          new THREE.MeshBasicMaterial({ color: (y !== 1) ? colors.gray : colors.top }), // Top
-          new THREE.MeshBasicMaterial({ color: (y !== -1) ? colors.gray : colors.bottom }), // Bottom
-          new THREE.MeshBasicMaterial({ color: (z !== 1) ? colors.gray : colors.left }), // Left
-          new THREE.MeshBasicMaterial({ color: (z !== -1) ? colors.gray : colors.right }) // Right
+          new THREE.MeshBasicMaterial({ color: (x !== 1) ? colors.gray : colors.front }),
+          new THREE.MeshBasicMaterial({ color: (x !== -1) ? colors.gray : colors.back }),
+          new THREE.MeshBasicMaterial({ color: (y !== 1) ? colors.gray : colors.top }),
+          new THREE.MeshBasicMaterial({ color: (y !== -1) ? colors.gray : colors.bottom }),
+          new THREE.MeshBasicMaterial({ color: (z !== 1) ? colors.gray : colors.left }),
+          new THREE.MeshBasicMaterial({ color: (z !== -1) ? colors.gray : colors.right })
         ];
         const smallCube = new THREE.Mesh(geometry, materials);
 
-        // Create edges geometry and material
         const edgesGeometry = new THREE.EdgesGeometry(geometry);
-        const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); // Black color
+        const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
         const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
 
-        // Position the small cube
         smallCube.position.set(
           x * (cubeSize + spacing),
           y * (cubeSize + spacing),
           z * (cubeSize + spacing)
         );
 
-        // Add small cube and its edges to the group
         cube.add(smallCube);
         cube.add(edges);
-        edges.position.copy(smallCube.position); // Align edges with the small cube
+        edges.position.copy(smallCube.position);
       }
     }
   }
@@ -104,27 +99,48 @@ camera.position.z = 6;
 rubiksCube.rotation.x = degreesToRads(30);
 rubiksCube.rotation.y = degreesToRads(45);
 
-// Animation loop
-const animate = () => {
-  requestAnimationFrame(animate);
-  composer.render(); // Use composer to render the scene with effects
-};
+// General rotation function for face cubes
+function rotateFaceCubes(axis, direction, faceCheck) {
+  const faceCubes = rubiksCube.children.filter(cube => faceCheck(cube.position));
 
-// Start animation
-animate();
+  const centerCube = faceCubes[8];
+  const angle = degreesToRads(45) * direction;
+
+  faceCubes.forEach((cube, index) => {
+      const offset = { x: cube.position.x - centerCube.position.x, y: cube.position.y - centerCube.position.y, z: cube.position.z - centerCube.position.z };
+
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      // Rotate around specified axis
+      if (axis === 'x') {
+        cube.position.y = centerCube.position.y + (offset.y * cosA - offset.z * sinA);
+        cube.position.z = centerCube.position.z + (offset.y * sinA + offset.z * cosA);
+        cube.rotation[axis] += angle;
+      } else if (axis === 'y') {
+        cube.position.x = centerCube.position.x + (offset.x * cosA - offset.z * sinA);
+        cube.position.z = centerCube.position.z + (offset.x * sinA + offset.z * cosA);
+        cube.rotation[axis] -= angle;
+      } else if (axis === 'z') {
+        cube.position.x = centerCube.position.x + (offset.x * cosA - offset.y * sinA);
+        cube.position.y = centerCube.position.y + (offset.x * sinA + offset.y * cosA);
+        cube.rotation[axis] += angle;
+    }
+  });
+}
 
 // Handle window resize
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight); // Update composer size
-  renderer.setPixelRatio(window.devicePixelRatio); // Update pixel ratio on resize
+  composer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
 });
 
 // Add event listener to rotate the cube with arrow keys
 document.addEventListener("keydown", function (event) {
-  const rotationSpeed = degreesToRads(10); // Rotation speed in radians
+  const rotationSpeed = degreesToRads(10);
   switch (event.key) {
     case "ArrowUp":
       rubiksCube.rotation.x += rotationSpeed;
@@ -138,30 +154,32 @@ document.addEventListener("keydown", function (event) {
     case "ArrowRight":
       rubiksCube.rotation.y += rotationSpeed;
       break;
-      case "1":
-        const faceCubes = [];
-      
-        rubiksCube.children.forEach(cube => {
-            if (cube.position.x < -1) {
-                faceCubes.push(cube);
-            }
-        });
-      
-        const centerCube = faceCubes[8];
-      
-        const angle = degreesToRads(45);
-        faceCubes.forEach((cube, index) => {
-            if (index !== 8) {
-                const offsetY = cube.position.y - centerCube.position.y;
-                const offsetZ = cube.position.z - centerCube.position.z;
-    
-                cube.position.y = centerCube.position.y + (offsetY * Math.cos(angle) - offsetZ * Math.sin(angle));
-                cube.position.z = centerCube.position.z + (offsetY * Math.sin(angle) + offsetZ * Math.cos(angle));
-              }
-              cube.rotation.x += angle;
-        });
-        break;
-    
-
+    case "1":
+      rotateFaceCubes('x', 1, pos => pos.x < -1);
+      break;
+    case "2":
+      rotateFaceCubes('x', 1, pos => pos.x > 1);
+      break;
+    case "3":
+      rotateFaceCubes('y', -1, pos => pos.y > 1);
+      break;
+    case "4":
+      rotateFaceCubes('y', -1, pos => pos.y < -1);
+      break;
+    case "5":
+      rotateFaceCubes('z', 1, pos => pos.z < -1);
+      break;
+    case "6":
+      rotateFaceCubes('z', 1, pos => pos.z > 1);
+      break;
   }
 });
+
+// Animation loop
+const animate = () => {
+  requestAnimationFrame(animate);
+  composer.render();
+};
+
+// Start animation
+animate();
