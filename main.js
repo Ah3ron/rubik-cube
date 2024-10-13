@@ -1,8 +1,11 @@
+import "./style.css";
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+
+// Scene initialization
 const initScene = () => new THREE.Scene();
 
 // Camera initialization
@@ -81,12 +84,12 @@ const createCube = () => {
           new THREE.MeshBasicMaterial({ color: z !== 1 ? colors.dark : colors.left }),
           new THREE.MeshBasicMaterial({ color: z !== -1 ? colors.dark : colors.right }),
         ];
-        
+
         const smallCube = new THREE.Mesh(
           new RoundedBoxGeometry(cubeSize, cubeSize, cubeSize, segments, radius),
           materials
         );
-        
+
         smallCube.position.set(
           x * (cubeSize + spacing),
           y * (cubeSize + spacing),
@@ -104,6 +107,7 @@ let isAnimating = false;
 const animationQueue = [];
 const stepCount = 10;
 
+// Function to rotate face cubes
 const rotateFaceCubes = (axis, direction, faceCheck, cubeGroup) => {
   if (isAnimating) return;
 
@@ -133,28 +137,71 @@ const rotateFaceCubes = (axis, direction, faceCheck, cubeGroup) => {
   if (!isAnimating) animationQueue.shift()();
 };
 
-// Keyboard controls
+let autoRotateInterval = null;
+
+// Function for random face rotation
+const randomRotateFaceCube = (cubeGroup) => {
+  const rotationMapping = [
+    { axis: 'z', direction: 1, check: pos => pos.z > 1 },   // Front face clockwise
+    { axis: 'z', direction: -1, check: pos => pos.z > 1 },  // Front face counterclockwise
+    { axis: 'y', direction: -1, check: pos => pos.y > 1 },  // Up face clockwise
+    { axis: 'y', direction: 1, check: pos => pos.y > 1 },   // Up face counterclockwise
+    { axis: 'x', direction: 1, check: pos => pos.x > 1 },   // Right face clockwise
+    { axis: 'x', direction: -1, check: pos => pos.x > 1 },  // Right face counterclockwise
+    { axis: 'z', direction: -1, check: pos => pos.z < -1 }, // Back face clockwise
+    { axis: 'z', direction: 1, check: pos => pos.z < -1 },  // Back face counterclockwise
+    { axis: 'y', direction: 1, check: pos => pos.y < -1 },  // Down face clockwise
+    { axis: 'y', direction: -1, check: pos => pos.y < -1 }, // Down face counterclockwise
+    { axis: 'x', direction: -1, check: pos => pos.x < -1 }, // Left face clockwise
+    { axis: 'x', direction: 1, check: pos => pos.x < -1 },  // Left face counterclockwise
+  ];
+
+  const randomRotation = rotationMapping[Math.floor(Math.random() * rotationMapping.length)];
+  rotateFaceCubes(randomRotation.axis, randomRotation.direction, randomRotation.check, cubeGroup);
+};
+
+// Function to start auto rotation
+const startAutoRotation = (cubeGroup) => {
+  autoRotateInterval = setInterval(() => {
+    randomRotateFaceCube(cubeGroup);
+  }, 500); 
+};
+
+// Function to stop auto rotation
+const stopAutoRotation = () => {
+  clearInterval(autoRotateInterval);
+  autoRotateInterval = null;
+};
+
+// Key press handling function
 const handleKeyPress = (cubeGroup, camera) => (event) => {
   const rotationMapping = {
-    f: () => rotateFaceCubes('z', 1, (pos) => pos.z > 1, cubeGroup), // Front clockwise
-    F: () => rotateFaceCubes('z', -1, (pos) => pos.z > 1, cubeGroup), // Front counterclockwise
-    u: () => rotateFaceCubes('y', -1, (pos) => pos.y > 1, cubeGroup), // Up clockwise
-    U: () => rotateFaceCubes('y', 1, (pos) => pos.y > 1, cubeGroup),  // Up counterclockwise
-    r: () => rotateFaceCubes('x', 1, (pos) => pos.x > 1, cubeGroup),  // Right clockwise
-    R: () => rotateFaceCubes('x', -1, (pos) => pos.x > 1, cubeGroup), // Right counterclockwise
-    b: () => rotateFaceCubes('z', -1, (pos) => pos.z < -1, cubeGroup), // Back clockwise
-    B: () => rotateFaceCubes('z', 1, (pos) => pos.z < -1, cubeGroup),  // Back counterclockwise
-    d: () => rotateFaceCubes('y', 1, (pos) => pos.y < -1, cubeGroup),  // Down clockwise
-    D: () => rotateFaceCubes('y', -1, (pos) => pos.y < -1, cubeGroup), // Down counterclockwise
-    l: () => rotateFaceCubes('x', -1, (pos) => pos.x < -1, cubeGroup), // Left clockwise
-    L: () => rotateFaceCubes('x', 1, (pos) => pos.x < -1, cubeGroup),  // Left counterclockwise
+    'f': () => rotateFaceCubes('z', 1, pos => pos.z > 1, cubeGroup),   // Front face clockwise
+    'F': () => rotateFaceCubes('z', -1, pos => pos.z > 1, cubeGroup),  // Front face counterclockwise
+    'u': () => rotateFaceCubes('y', -1, pos => pos.y > 1, cubeGroup),  // Up face clockwise
+    'U': () => rotateFaceCubes('y', 1, pos => pos.y > 1, cubeGroup),   // Up face counterclockwise
+    'r': () => rotateFaceCubes('x', 1, pos => pos.x > 1, cubeGroup),   // Right face clockwise
+    'R': () => rotateFaceCubes('x', -1, pos => pos.x > 1, cubeGroup),  // Right face counterclockwise
+    'b': () => rotateFaceCubes('z', -1, pos => pos.z < -1, cubeGroup), // Back face clockwise
+    'B': () => rotateFaceCubes('z', 1, pos => pos.z < -1, cubeGroup),  // Back face counterclockwise
+    'd': () => rotateFaceCubes('y', 1, pos => pos.y < -1, cubeGroup),  // Down face clockwise
+    'D': () => rotateFaceCubes('y', -1, pos => pos.y < -1, cubeGroup), // Down face counterclockwise
+    'l': () => rotateFaceCubes('x', -1, pos => pos.x < -1, cubeGroup), // Left face clockwise
+    'L': () => rotateFaceCubes('x', 1, pos => pos.x < -1, cubeGroup),  // Left face counterclockwise
+    'a': () => {
+      if (autoRotateInterval) {
+        stopAutoRotation();
+      } else {
+        startAutoRotation(cubeGroup);
+      }
+    },
   };
 
   const cubeRotationMapping = {
-    ArrowUp: () => (cubeGroup.rotation.x -= degreesToRads(10)),
-    ArrowDown: () => (cubeGroup.rotation.x += degreesToRads(10)),
-    ArrowLeft: () => (cubeGroup.rotation.y -= degreesToRads(10)),
-    ArrowRight: () => (cubeGroup.rotation.y += degreesToRads(10)),
+    ArrowUp: () => cubeGroup.rotation.x -= degreesToRads(10),    // Rotate entire cube up
+    ArrowDown: () => cubeGroup.rotation.x += degreesToRads(10),  // Rotate entire cube down
+    ArrowLeft: () => cubeGroup.rotation.y -= degreesToRads(10),  // Rotate entire cube left
+    ArrowRight: () => cubeGroup.rotation.y += degreesToRads(10), // Rotate entire cube right
   };
 
   if (rotationMapping[event.key]) {
@@ -166,24 +213,28 @@ const handleKeyPress = (cubeGroup, camera) => (event) => {
   }
 };
 
-// Reset camera and cube view
+// Reset camera view
 const resetCameraView = (camera, cubeGroup) => {
   camera.position.set(0, 0, 6);
   cubeGroup.rotation.set(degreesToRads(30), degreesToRads(45), 0);
   camera.lookAt(0, 0, 0);
 };
 
-// Main execution
+// Initialize scene, camera, renderer, and composer
 const scene = initScene();
 const camera = initCamera();
 const renderer = initRenderer();
 const composer = initComposer(renderer, scene, camera);
 
+// Add elements to scene
 scene.add(createBackground());
 const rubiksCube = createCube();
 scene.add(rubiksCube);
 
+// Setup event listener for key presses
 document.addEventListener('keydown', handleKeyPress(rubiksCube, camera));
+
+// Reset camera view initially
 resetCameraView(camera, rubiksCube);
 
 // Animation loop
@@ -200,4 +251,5 @@ window.addEventListener('resize', () => {
   composer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Start animation
 animate(composer);
